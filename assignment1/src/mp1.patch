@@ -1,0 +1,72 @@
+diff --git a/src/arch/riscv/linux/linux.hh b/src/arch/riscv/linux/linux.hh
+index 9c99d1b5d0..4b4ffee085 100644
+--- a/src/arch/riscv/linux/linux.hh
++++ b/src/arch/riscv/linux/linux.hh
+@@ -195,6 +195,27 @@ class RiscvLinux64 : public RiscvLinux, public OpenFlagTable<RiscvLinux64>
+         uint32_t mem_unit;
+     };
+ 
++    struct tgt_clone3 {
++        uint64_t flags;        /* Flags bit mask */
++        uint64_t pidfd;        /* Where to store PID file descriptor
++                                (int *) */
++        uint64_t child_tid;    /* Where to store child TID,
++                                in child's memory (pid_t *) */
++        uint64_t parent_tid;   /* Where to store child TID,
++                                in parent's memory (pid_t *) */
++        uint64_t exit_signal;  /* Signal to deliver to parent on
++                                child termination */
++        uint64_t stack;        /* Pointer to lowest byte of stack */
++        uint64_t stack_size;   /* Size of stack */
++        uint64_t tls;          /* Location of new TLS */
++        uint64_t set_tid;      /* Pointer to a pid_t array
++                                (since Linux 5.5) */
++        uint64_t set_tid_size; /* Number of elements in set_tid
++                                (since Linux 5.5) */
++        uint64_t cgroup;       /* File descriptor for target cgroup
++                                of child (since Linux 5.7) */
++};
++
+     static void
+     archClone(uint64_t flags,
+               Process *pp, Process *cp,
+diff --git a/src/arch/riscv/linux/se_workload.cc b/src/arch/riscv/linux/se_workload.cc
+index dd9a8a2129..7e918e299a 100644
+--- a/src/arch/riscv/linux/se_workload.cc
++++ b/src/arch/riscv/linux/se_workload.cc
+@@ -399,6 +399,7 @@ SyscallDescTable<SEWorkload::SyscallABI> EmuLinux::syscallDescs64 = {
+     { 285,  "copy_file_range" },
+     { 286,  "preadv2" },
+     { 287,  "pwritev2" },
++    { 435,  "clone3", clone3BackwardsFunc<RiscvLinux64> },
+     { 1024, "open", openFunc<RiscvLinux64> },
+     { 1025, "link", linkFunc },
+     { 1026, "unlink", unlinkFunc },
+@@ -738,6 +739,7 @@ SyscallDescTable<SEWorkload::SyscallABI> EmuLinux::syscallDescs32 = {
+     { 285,  "copy_file_range" },
+     { 286,  "preadv2" },
+     { 287,  "pwritev2" },
++    { 435,  "clone3", clone3BackwardsFunc<RiscvLinux32> },
+     { 1024, "open", openFunc<RiscvLinux32> },
+     { 1025, "link", linkFunc },
+     { 1026, "unlink", unlinkFunc },
+diff --git a/src/sim/syscall_emul.hh b/src/sim/syscall_emul.hh
+index 59a97d938d..75714bf341 100644
+--- a/src/sim/syscall_emul.hh
++++ b/src/sim/syscall_emul.hh
+@@ -1723,6 +1723,15 @@ cloneBackwardsFunc(SyscallDesc *desc, ThreadContext *tc, RegVal flags,
+     return cloneFunc<OS>(desc, tc, flags, newStack, ptidPtr, ctidPtr, tlsPtr);
+ }
+ 
++template <class OS>
++SyscallReturn
++clone3BackwardsFunc(SyscallDesc *desc, ThreadContext *tc,
++            VPtr<typename OS::tgt_clone3> tgt_uargs, int tgt_size)
++{
++    return cloneFunc<OS>(desc, tc, tgt_uargs->flags, tgt_uargs->stack,
++                         tgt_uargs->parent_tid, tgt_uargs->child_tid, tgt_uargs->tls);
++}
++
+ /// Target fstatfs() handler.
+ template <class OS>
+ SyscallReturn
