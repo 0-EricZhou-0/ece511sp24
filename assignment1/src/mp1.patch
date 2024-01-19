@@ -42,14 +42,6 @@ index dd9a8a2129..7e918e299a 100644
      { 1024, "open", openFunc<RiscvLinux64> },
      { 1025, "link", linkFunc },
      { 1026, "unlink", unlinkFunc },
-@@ -738,6 +739,7 @@ SyscallDescTable<SEWorkload::SyscallABI> EmuLinux::syscallDescs32 = {
-     { 285,  "copy_file_range" },
-     { 286,  "preadv2" },
-     { 287,  "pwritev2" },
-+    { 435,  "clone3", clone3BackwardsFunc<RiscvLinux32> },
-     { 1024, "open", openFunc<RiscvLinux32> },
-     { 1025, "link", linkFunc },
-     { 1026, "unlink", unlinkFunc },
 diff --git a/src/sim/syscall_emul.hh b/src/sim/syscall_emul.hh
 index 59a97d938d..75714bf341 100644
 --- a/src/sim/syscall_emul.hh
